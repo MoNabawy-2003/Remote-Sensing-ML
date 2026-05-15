@@ -1,0 +1,6 @@
+node_modules/
+.venv/
+uploads/
+temp_chunks/
+*.pem
+.DS_Store

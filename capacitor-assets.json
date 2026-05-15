@@ -1,0 +1,8 @@
+{
+  "iconPath": "public/assets/logo.svg",
+  "splashPath": "public/assets/logo.svg",
+  "android": {
+    "iconPath": "public/assets/logo.svg",
+    "splashPath": "public/assets/logo.svg"
+  }
+}

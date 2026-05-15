@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Zagazig Remote Sensing Analytics</title>
+
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #5cc8ff;
+      --primary-strong: #49aef2;
+      --accent: #56f0c4;
+      --accent-strong: #2cc89f;
+      --bg-dark: #05060c;
+      --bg-deep: #0b0f1d;
+      --card-bg: rgba(16, 22, 40, 0.75);
+      --glass: rgba(16, 23, 42, 0.62);
+      --text-main: #f5f8ff;
+      --text-dim: #b7c2dc;
+      --text-muted: #7e8aac;
+      --border: rgba(152, 168, 196, 0.2);
+      --sidebar-width: 320px;
+      --shadow: 0 28px 70px rgba(2, 6, 16, 0.7);
+    }
+
+    * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    img,
+    svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      font-family: 'Sora', sans-serif;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(86, 240, 196, 0.2), transparent 40%),
+        radial-gradient(circle at 85% 10%, rgba(92, 200, 255, 0.28), transparent 42%),
+        radial-gradient(circle at 75% 80%, rgba(81, 126, 255, 0.18), transparent 44%),
+        linear-gradient(145deg, rgba(11, 16, 32, 0.9), rgba(5, 6, 12, 0.98));
+      z-index: -2;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 120px 120px;
+      opacity: 0.35;
+      z-index: -1;
+    }
+
+    /* =========================
+       SIDEBAR
+    ========================= */
+
+    #sidebar {
+      position: fixed;
+      left: 0;
+      top: 24px;
+      bottom: 24px;
+      width: var(--sidebar-width);
+      background: rgba(9, 14, 28, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 0 24px 24px 0;
+      transform: translateX(calc(-1 * var(--sidebar-width)));
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 18px 0 38px rgba(2, 6, 16, 0.7);
+      backdrop-filter: blur(16px);
+    }
+
+    #sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-toggle-btn {
+      position: fixed;
+      left: 24px;
+      top: 26px;
+      background: linear-gradient(130deg, rgba(86, 240, 196, 0.9), rgba(92, 200, 255, 0.9));
+      border: none;
+      color: #021018;
+      padding: 12px 20px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 700;
+      z-index: 999;
+      box-shadow: 0 12px 24px rgba(4, 143, 173, 0.45);
+      transition: all 0.3s ease;
+    }
+
+    #sidebar.open ~ .sidebar-toggle-btn {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-20px);
+    }
+
+    .sidebar-header {
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #historyContainer {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    #historyContainer::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #historyContainer::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 10px;
+    }
+
+    .history-card {
+      background: rgba(12, 18, 33, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .history-card:hover {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    /* =========================
+       MAIN WRAPPER
+    ========================= */
+
+    .main-wrapper {
+      flex: 1;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 22px 80px;
+      transition:
+        margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+        width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .main-wrapper.sidebar-open {
+      margin-left: var(--sidebar-width);
+      width: calc(100% - var(--sidebar-width));
+    }
+
+    .main-wrapper::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .main-wrapper::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 10px;
+    }
+
+    /* =========================
+       CONTAINER
+    ========================= */
+
+    .container {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+
+    .shell-card {
+      background: var(--card-bg);
+      padding: 40px;
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .shell-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      border: 1px solid rgba(92, 200, 255, 0.08);
+      pointer-events: none;
+    }
+
+    .glass-panel {
+      background: var(--glass);
+      border: 1px solid rgba(92, 200, 255, 0.15);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .hero-card {
+      grid-column: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      height: 100%;
+    }
+
+    .metrics-card {
+      grid-column: auto;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: 1fr;
+      gap: 20px;
+      height: 100%;
+    }
+
+    .metric-tile {
+      background: rgba(7, 12, 24, 0.7);
+      border-radius: 20px;
+      padding: 20px;
+      border: 1px solid rgba(86, 240, 196, 0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 14px;
+    }
+
+    .metric-tile span {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .metric-tile strong {
+      display: block;
+      font-size: 1.12rem;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(5, 16, 32, 0.55);
+    }
+
+    .brand-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .brand-kicker {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 2.1rem;
+      margin: 10px 0 0 0;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      margin-top: 10px;
+      font-size: 1rem;
+      max-width: 620px;
+      line-height: 1.6;
+    }
+
+    .affiliation-badge {
+      background: linear-gradient(140deg, rgba(10, 22, 44, 0.85), rgba(12, 18, 32, 0.7));
+      border: 1px solid rgba(92, 200, 255, 0.35);
+      color: var(--text-main);
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(6, 18, 34, 0.45);
+    }
+
+    .top-nav {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+      margin-top: 12px;
+    }
+
+    .top-nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-weight: 600;
+      padding-bottom: 4px;
+      border-bottom: 2px solid transparent;
+    }
+
+    .top-nav a:hover {
+      color: var(--text-main);
+      border-bottom-color: var(--primary);
+    }
+
+    .nav-toggle {
+      display: none;
+      background: rgba(10, 18, 34, 0.92);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* =========================
+       FILE INPUTS
+    ========================= */
+
+    .dropzone {
+      position: relative;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1.5px dashed var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 16px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      cursor: pointer;
+    }
+
+    .dropzone:hover,
+    .dropzone.is-active {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.05);
+      box-shadow: inset 0 0 0 1px rgba(92, 200, 255, 0.2);
+    }
+
+    .dropzone-text {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .dropzone-title {
+      font-weight: 600;
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .dropzone-hint {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .dropzone-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-align: right;
+      min-width: 72px;
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .select-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .select-row label {
+      font-weight: 600;
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .select-row select {
+      background: rgba(10, 18, 34, 0.92);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 0.9rem;
+    }
+
+    /* =========================
+       BUTTONS
+    ========================= */
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(120deg, var(--primary), var(--accent));
+      color: #03121c;
+      border: none;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 10px 20px rgba(50, 190, 225, 0.3);
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: rgba(10, 18, 34, 0.92);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .btn-cancel {
+      margin-top: 14px;
+      width: 100%;
+      background: rgba(248, 113, 113, 0.12);
+      color: #fecaca;
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+      background: rgba(248, 113, 113, 0.2);
+    }
+
+    .action-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .progress-shell {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 18px;
+      border: 1px solid rgba(92, 200, 255, 0.2);
+      background: rgba(8, 14, 28, 0.7);
+      text-align: center;
+    }
+
+    .progress-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 10px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0;
+      position: relative;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(120deg, var(--primary), var(--accent));
+      transition: width 0.2s ease;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .legend-card {
+      background: rgba(8, 14, 28, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .legend-title {
+      margin: 0 0 12px 0;
+      font-size: 1rem;
+    }
+
+    .legend-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      display: inline-block;
+      background: #4b5563;
+      box-shadow: 0 0 8px rgba(86, 240, 196, 0.2);
+    }
+
+    .legend-water { background: #1d9bf0; }
+    .legend-veg { background: #3ddc97; }
+    .legend-built { background: #f59e0b; }
+    .legend-bare { background: #94a3b8; }
+
+    .section-title {
+      font-size: 1.35rem;
+      margin: 0 0 12px 0;
+    }
+
+    .section-subtitle {
+      color: var(--text-dim);
+      margin: 0 0 18px 0;
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    .doc-card {
+      background: rgba(7, 12, 24, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .doc-card h4 {
+      margin: 0 0 8px 0;
+      font-size: 1rem;
+    }
+
+    .doc-card p {
+      margin: 0;
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .doc-section {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(280px, 1fr);
+      gap: 24px;
+      align-items: center;
+      margin-top: 24px;
+    }
+
+    .doc-text h4 {
+      margin: 0 0 10px 0;
+      font-size: 1.1rem;
+    }
+
+    .doc-text p {
+      margin: 0;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .doc-media {
+      display: grid;
+      gap: 16px;
+    }
+
+    .image-frame {
+      background: rgba(6, 10, 22, 0.85);
+      border: 1px solid rgba(92, 200, 255, 0.25);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(2, 8, 20, 0.6);
+    }
+
+    .image-frame img {
+      width: 100%;
+      display: block;
+    }
+
+    .image-frame figcaption {
+      padding: 12px 16px 16px;
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+
+    .doc-summary {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr);
+      gap: 22px;
+      align-items: center;
+      margin-top: 22px;
+    }
+
+    .doc-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .doc-pill {
+      background: rgba(7, 13, 26, 0.8);
+      border: 1px solid rgba(86, 240, 196, 0.2);
+      color: var(--text-dim);
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+    }
+
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+
+    .team-card {
+      background: rgba(10, 16, 30, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .team-card span {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer {
+      padding: 28px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .footer-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(10, 22, 44, 0.7);
+      border: 1px solid rgba(92, 200, 255, 0.28);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .results-empty {
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px dashed rgba(152, 168, 196, 0.3);
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* =========================
+       IMAGE PREVIEW
+    ========================= */
+
+    .image-preview-container {
+      background: #000;
+      border-radius: 18px;
+      overflow: hidden;
+      margin-top: 25px;
+      border: 1px solid var(--border);
+    }
+
+    #generatedImage {
+      width: 100%;
+      display: block;
+      cursor: pointer;
+    }
+
+    /* =========================
+       FULLSCREEN MODAL
+    ========================= */
+
+    #fs-modal {
+      display: none;
+
+      position: fixed;
+      inset: 0;
+
+      background: rgba(0,0,0,0.9);
+
+      z-index: 9999;
+
+      padding: 20px;
+
+      cursor: zoom-out;
+    }
+
+    #fs-modal img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #doc-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 6, 12, 0.92);
+      z-index: 9998;
+      padding: 40px 20px;
+      overflow-y: auto;
+      backdrop-filter: blur(8px);
+    }
+
+    .doc-modal-card {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: rgba(9, 14, 28, 0.92);
+      border: 1px solid rgba(92, 200, 255, 0.25);
+      border-radius: 28px;
+      padding: 32px;
+      box-shadow: 0 30px 80px rgba(1, 6, 15, 0.8);
+    }
+
+    .doc-modal-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .doc-modal-header h2 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .doc-close {
+      background: rgba(10, 18, 34, 0.9);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .doc-modal-section {
+      margin-top: 22px;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(92, 200, 255, 0.15);
+      background: rgba(6, 10, 22, 0.65);
+    }
+
+    .doc-modal-section h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.2rem;
+    }
+
+    .doc-modal-section p {
+      margin: 0 0 12px 0;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    .doc-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    /* =========================
+       SPINNER
+    ========================= */
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* =========================
+       MOBILE
+    ========================= */
+
+    @media (max-width: 980px) {
+      .container {
+        gap: 22px;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .metrics-card {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .doc-section {
+        grid-template-columns: 1fr;
+      }
+
+      .doc-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .results-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        width: 85vw;
+        max-width: 320px;
+      }
+
+      .main-wrapper.sidebar-open {
+        margin-left: 0;
+        width: 100%;
+      }
+
+      .shell-card {
+        padding: 22px;
+      }
+
+      .header-section {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .action-group {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar-toggle-btn {
+        padding: 10px 16px;
+      }
+
+      .affiliation-badge {
+        width: 100%;
+      }
+
+      .top-nav {
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 16px;
+        padding: 14px;
+        background: rgba(7, 12, 24, 0.85);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+      }
+
+      .top-nav.is-open {
+        display: flex;
+      }
+
+      .nav-toggle {
+        display: inline-flex;
+      }
+
+      .dropzone {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .dropzone-meta {
+        text-align: left;
+      }
+
+      .brand-row {
+        align-items: flex-start;
+      }
+
+      .brand-logo {
+        width: 60px;
+        height: 60px;
+      }
+
+      .brand-title {
+        font-size: 1.7rem;
+        line-height: 1.2;
+      }
+
+      .subtitle {
+        font-size: 0.95rem;
+      }
+
+      .dashboard-grid {
+        gap: 18px;
+      }
+
+      .doc-actions {
+        gap: 10px;
+      }
+
+      .metric-tile {
+        padding: 16px;
+        gap: 10px;
+      }
+
+      .metric-tile span {
+        font-size: 0.66rem;
+      }
+
+      .metric-tile strong {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================
+       SIDEBAR
+  ========================== -->
+
+  <div id="sidebar">
+
+    <div class="sidebar-header">
+      <h3 style="margin:0; font-size:1.1rem;">History</h3>
+
+      <button
+        onclick="toggleSidebar()"
+        style="
+          background:rgba(255,255,255,0.05);
+          border:none;
+          color:white;
+          width:32px;
+          height:32px;
+          border-radius:8px;
+          cursor:pointer;
+        "
+      >
+        ✕
+      </button>
+    </div>
+
+    <div id="historyContainer"></div>
+
+  </div>
+
+  <!-- =========================
+       TOGGLE BUTTON
+  ========================== -->
+
+  <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+    ☰ History
+  </button>
+
+  <!-- =========================
+       MAIN WRAPPER
+  ========================== -->
+
+  <div class="main-wrapper">
+
+    <div class="container">
+
+      <div class="shell-card" id="upload">
+        <div class="topbar">
+          <div class="brand-block">
+            <div class="brand-row">
+              <img class="brand-logo" src="assets/logo.svg" alt="Remote Sensing & ML logo">
+              <div>
+                <div class="brand-kicker">Remote Sensing & ML</div>
+                <h2 class="brand-title">Cloud Analytics Workspace</h2>
+              </div>
+            </div>
+            <p class="subtitle">
+              Land Cover Classification using Random Forest with ENVI ingestion, spectral analytics, and
+              validation-ready outputs.
+            </p>
+          </div>
+          <div class="topbar-actions">
+            <div class="affiliation-badge">
+              Electronics & Communication Department, Zagazig University
+            </div>
+            <button class="nav-toggle" id="navToggle" type="button">Menu</button>
+          </div>
+        </div>
+
+        <nav class="top-nav" id="navLinks">
+          <a href="#upload">Pipeline</a>
+          <a href="#results">Results</a>
+          <a href="#documentation" onclick="openDocs(); return false;">Documentation</a>
+          <a href="#team">Team</a>
+        </nav>
+
+        <div class="dashboard-grid" style="margin-top:22px;">
+          <div class="hero-card glass-panel">
+            <h3 style="margin:0; font-size:1.3rem;">Data Intake & Processing</h3>
+            <p class="section-subtitle">
+              Upload ENVI header and raw binary files to generate classification previews and store run history.
+            </p>
+
+            <form id="uploadForm">
+              <div class="select-row">
+                <label for="modelSelect">Model Selection</label>
+                <select id="modelSelect" name="model">
+                  <option>Random Forest (Default)</option>
+                  <option disabled>Gradient Boosting (Coming Soon)</option>
+                  <option disabled>Neural Network (Coming Soon)</option>
+                </select>
+              </div>
+
+              <div class="dropzone" data-dropzone>
+                <div class="dropzone-text">
+                  <span class="dropzone-title">Header File (.hdr)</span>
+                  <span class="dropzone-hint">Drag and drop or click to browse</span>
+                </div>
+                <span class="dropzone-meta">Required</span>
+                <input type="file" name="hdr" accept=".hdr" required>
+              </div>
+
+              <div class="dropzone" data-dropzone>
+                <div class="dropzone-text">
+                  <span class="dropzone-title">Raw Data File</span>
+                  <span class="dropzone-hint">Binary data file for ENVI stack</span>
+                </div>
+                <span class="dropzone-meta">Required</span>
+                <input type="file" name="dat" required>
+              </div>
+
+              <button type="submit" class="btn-submit" id="submitBtn">
+                Run Classification Pipeline
+              </button>
+            </form>
+
+            <div id="message"></div>
+          </div>
+
+          <div class="metrics-card">
+            <div class="metric-tile">
+              <span>Scene Coverage</span>
+              <strong>10-band Landsat</strong>
+            </div>
+            <div class="metric-tile">
+              <span>Model Strategy</span>
+              <strong>Random Forest</strong>
+            </div>
+            <div class="metric-tile">
+              <span>Transferability</span>
+              <strong>Nile Delta -> Ismailia</strong>
+            </div>
+            <div class="metric-tile">
+              <span>Validation</span>
+              <strong>OA / Kappa / F1</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shell-card" id="results">
+        <h3 class="section-title">Classification Results</h3>
+        <p class="section-subtitle">
+          Generated visualizations are stored here for quick inspection and download.
+        </p>
+        <div class="results-grid">
+          <div id="resultsContainer">
+            <div class="results-empty">No results yet. Run the pipeline to generate output previews.</div>
+          </div>
+          <div class="legend-card">
+            <h4 class="legend-title">Map Legend</h4>
+            <div class="legend-list">
+              <div class="legend-item"><span class="legend-swatch legend-water"></span>Water</div>
+              <div class="legend-item"><span class="legend-swatch legend-veg"></span>Vegetation</div>
+              <div class="legend-item"><span class="legend-swatch legend-built"></span>Built-Up</div>
+              <div class="legend-item"><span class="legend-swatch legend-bare"></span>Bare Soil</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shell-card" id="documentation">
+        <h3 class="section-title">Documentation</h3>
+        <p class="section-subtitle">
+          A high-level summary for the workflow plus a dedicated technical deep dive in the full documentation.
+        </p>
+
+        <div class="doc-summary">
+          <div>
+            <p class="section-subtitle" style="margin-bottom:12px;">
+              Explore a complete technical whitepaper covering 10-band feature engineering, transferability
+              methodology, preprocessing safeguards, and validation metrics.
+            </p>
+            <div class="doc-actions">
+              <button class="btn-submit" type="button" onclick="openDocs()">Open Full Documentation</button>
+              <span class="doc-pill">10-band ENVI extraction</span>
+              <span class="doc-pill">Random Forest transferability</span>
+              <span class="doc-pill">Ground-truth ROI validation</span>
+            </div>
+          </div>
+          <div class="doc-media">
+            <figure class="image-frame">
+              <img src="assets/doc-training-alexandria.png" alt="Training Data: Alexandria Region">
+              <figcaption>Training Data: Alexandria Region</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+
+      <div class="shell-card" id="team">
+        <h3 class="section-title">Project Team</h3>
+        <p class="section-subtitle">Modern presentation of the Land Cover Classification team.</p>
+        <div class="team-grid">
+          <div class="team-card">
+            <strong>Ahmed Shawadfi</strong>
+            <span>Analog IC Engineer</span>
+          </div>
+          <div class="team-card">
+            <strong>Ahmed Sabry</strong>
+            <span>Cloud & Full-Stack Engineer</span>
+          </div>
+          <div class="team-card">
+            <strong>Mohamed Ayman Nabawi</strong>
+            <span>Cloud & DevOps Engineer</span>
+          </div>
+          <div class="team-card">
+            <strong>Ibrahem Mohamed</strong>
+            <span>Network & Cloud Engineer</span>
+          </div>
+          <div class="team-card">
+            <strong>Abdullah Reda</strong>
+            <span>Digital IC Engineer</span>
+          </div>
+          <div class="team-card">
+            <strong>Mohamed Wagih</strong>
+            <span>Cyber Security Engineer</span>
+          </div>
+          <div class="team-card">
+            <strong>Mariem Omar</strong>
+            <span>Telecommunication Engineer</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="shell-card footer">
+        <div class="footer-badge">Electronics & Communication Department, Zagazig University</div>
+        <div>Under the supervision of Dr. Azhar Ahmed and Eng. Assem Ibrahim</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- =========================
+       FULLSCREEN MODAL
+  ========================== -->
+
+  <div id="fs-modal" onclick="this.style.display='none'">
+    <img id="fs-img" src="">
+  </div>
+
+  <div id="doc-modal">
+    <div class="doc-modal-card">
+      <div class="doc-modal-header">
+        <h2>Technical Documentation</h2>
+        <button class="doc-close" type="button" onclick="closeDocs()">Close</button>
+      </div>
+
+      <div class="doc-modal-section">
+        <h3>Overview</h3>
+        <p>
+          This documentation provides a complete technical reference for the Land Cover Classification
+          workflow. It covers 10-band ENVI feature extraction, transferability across geographic domains,
+          preprocessing safeguards, ground-truth validation, and accuracy reporting.
+        </p>
+      </div>
+
+      <div class="doc-modal-section">
+        <h3>1. 10-band ENVI Data Extraction</h3>
+        <p>
+          The input pipeline ingests ENVI-compatible Landsat stacks and builds a 10-band feature cube.
+          Seven native Landsat bands are complemented with three spectral indices derived from the stack:
+          NDVI, NDWI, and NDBI. The resulting feature vector preserves both raw reflectance and targeted
+          land-cover signatures (vegetation, water, and built-up).
+        </p>
+        <ul class="doc-list">
+          <li>Band stack validation ensures the expected band count before any transformation.</li>
+          <li>NDVI = (NIR - Red) / (NIR + Red) for vegetation response.</li>
+          <li>NDWI = (Green - NIR) / (Green + NIR) for surface water detection.</li>
+          <li>NDBI = (SWIR - NIR) / (SWIR + NIR) for built-up characterization.</li>
+        </ul>
+      </div>
+
+      <div class="doc-modal-section">
+        <h3>2. Model Transferability Strategy</h3>
+        <p>
+          The Random Forest model is trained on Nile Delta scenes and evaluated on Ismailia to verify
+          transferability. This establishes whether learned spectral separability holds across varying
+          regional land-cover distributions and atmospheric conditions.
+        </p>
+        <ul class="doc-list">
+          <li>Training datasets are curated from Nile Delta ROIs with balanced class proportions.</li>
+          <li>Testing datasets use Ismailia scenes to stress domain shift and cross-region generalization.</li>
+          <li>Consistent preprocessing ensures the feature pipeline remains invariant between regions.</li>
+        </ul>
+      </div>
+
+      <div class="doc-modal-section">
+        <h3>3. Preprocessing Safeguards</h3>
+        <p>
+          Multiple safeguards prevent runtime failures and improve model stability. Feature-count validation
+          confirms that each pixel contains the full 10-band vector. No-data and NaN masking are applied
+          before scaling, then remaining NaNs are replaced with zeros to avoid scaler crashes.
+        </p>
+        <ul class="doc-list">
+          <li>Feature-count validation ensures all required bands and indices are present.</li>
+          <li>NaN/no-data masks remove invalid pixels prior to scaling and prediction.</li>
+          <li>Residual NaNs are replaced with zeros to keep the scaler numerically stable.</li>
+        </ul>
+      </div>
+
+      <div class="doc-modal-section">
+        <h3>4. Ground-truth ROI Validation</h3>
+        <p>
+          Validation uses labeled ROIs aligned with the prediction grid. Ground-truth coordinates are provided
+          in 1-based indexing, then converted to 0-based coordinates to match array indexing in the model
+          pipeline. This alignment ensures that the reference labels and predicted classes map to the same
+          pixels.
+        </p>
+        <ul class="doc-list">
+          <li>ROI coordinates are normalized to zero-based indexing before extraction.</li>
+          <li>Pixel-wise labels are collected for evaluation on the predicted raster.</li>
+          <li>Class-level consistency checks validate the ROI mapping against band geometry.</li>
+        </ul>
+      </div>
+
+      <div class="doc-modal-section">
+        <h3>5. Accuracy & Reporting</h3>
+        <p>
+          The evaluation stage extracts Overall Accuracy and a full classification report including
+          precision, recall, and F1-score per class. These metrics are summarized for dashboards and
+          exported for formal reporting.
+        </p>
+        <ul class="doc-list">
+          <li>Overall Accuracy computed from correctly classified ROI pixels.</li>
+          <li>Classification report includes per-class precision, recall, and F1-score.</li>
+          <li>Metrics are archived alongside output rasters for audit-ready reporting.</li>
+        </ul>
+      </div>
+
+      <div class="doc-modal-section">
+        <h3>Workflow Case Study Images</h3>
+        <div class="doc-section" style="margin-top:0;">
+          <div class="doc-text">
+            <h4>Training Phase</h4>
+            <p>Training sample visualization for Alexandria, used to calibrate the Random Forest model.</p>
+          </div>
+          <div class="doc-media">
+            <figure class="image-frame">
+              <img src="assets/doc-training-alexandria.png" alt="Training Data: Alexandria Region">
+              <figcaption>Training Data: Alexandria Region</figcaption>
+            </figure>
+          </div>
+        </div>
+        <div class="doc-section">
+          <div class="doc-text">
+            <h4>Testing & Validation Phase</h4>
+            <p>Cross-region transferability visualization for Fayoum and Sinai scenes.</p>
+          </div>
+          <div class="doc-media">
+            <figure class="image-frame">
+              <img src="assets/doc-testing-fayoum-sinai.png" alt="Testing Data: Fayoum & Sinai Regions">
+              <figcaption>Testing Data: Fayoum & Sinai Regions</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================
+       SCRIPT
+  ========================== -->
+
+  <script>
+
+    const form = document.getElementById("uploadForm");
+    const message = document.getElementById("message");
+    const historyContainer = document.getElementById("historyContainer");
+    const sidebar = document.getElementById("sidebar");
+    const mainWrapper = document.querySelector(".main-wrapper");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const docModal = document.getElementById("doc-modal");
+    const navToggle = document.getElementById("navToggle");
+    const navLinks = document.getElementById("navLinks");
+    
+    let cancelController = null;
+
+    /* =========================
+       LOAD HISTORY
+    ========================== */
+
+    window.addEventListener('DOMContentLoaded', () => {
+
+      const saved =
+        JSON.parse(localStorage.getItem('envi_history') || '[]');
+
+      saved.reverse().forEach(item => renderHistoryCard(item));
+
+      if (navToggle && navLinks) {
+        navToggle.addEventListener('click', () => {
+          navLinks.classList.toggle('is-open');
+        });
+      }
+
+      document.querySelectorAll('[data-dropzone]').forEach((zone) => {
+        const input = zone.querySelector('input[type="file"]');
+        if (!input) return;
+
+        // Helper: update the hint text with the selected filename
+        function updateLabel(files) {
+          const hint = zone.querySelector('.dropzone-hint');
+          const meta = zone.querySelector('.dropzone-meta');
+          if (files && files.length > 0) {
+            hint.textContent = files[0].name;
+            hint.style.color = 'var(--accent)';
+            meta.textContent = (files[0].size / 1024).toFixed(1) + ' KB';
+            zone.style.borderColor = 'var(--accent)';
+            zone.style.background = 'rgba(86,240,196,0.05)';
+          } else {
+            // reset
+            hint.style.color = '';
+            zone.style.borderColor = '';
+            zone.style.background = '';
+          }
+        }
+
+        // Click-to-browse: fires after the native file picker closes
+        input.addEventListener('change', () => {
+          updateLabel(input.files);
+        });
+
+        zone.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          zone.classList.add('is-active');
+        });
+
+        zone.addEventListener('dragleave', () => {
+          zone.classList.remove('is-active');
+        });
+
+        zone.addEventListener('drop', (event) => {
+          event.preventDefault();
+          zone.classList.remove('is-active');
+          if (event.dataTransfer && event.dataTransfer.files.length) {
+            // DataTransfer → synthetic change event doesn't fire automatically,
+            // so call updateLabel directly after assigning
+            input.files = event.dataTransfer.files;
+            updateLabel(input.files);
+          }
+        });
+      });
+
+    });
+
+    /* =========================
+       SIDEBAR TOGGLE
+    ========================== */
+
+    function toggleSidebar() {
+
+      sidebar.classList.toggle('open');
+      mainWrapper.classList.toggle('sidebar-open');
+
+    }
+
+    /* =========================
+       HISTORY CARD
+    ========================== */
+
+    function renderHistoryCard(item) {
+
+      const div = document.createElement('div');
+
+      div.className = 'history-card';
+
+      div.innerHTML = `
+        <div
+          style="
+            font-family:'Space Mono';
+            font-size:0.65rem;
+            color:var(--primary);
+            margin-bottom:5px;
+          "
+        >
+          ${item.time}
+        </div>
+
+        <div
+          style="
+            font-size:0.8rem;
+            font-weight:500;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          "
+        >
+          ${item.name}
+        </div>
+      `;
+
+      div.onclick = () => {
+        displayResult(item.url, item.time, item.name, item.report);
+      };
+
+      historyContainer.prepend(div);
+
+    }
+
+    /* =========================
+       DISPLAY RESULT
+    ========================== */
+
+    function displayResult(url, time, name, report) {
+      
+      let reportHtml = '';
+      if (report && report.metrics && report.area_stats) {
+        const m = report.metrics;
+        const a = report.area_stats;
+        
+        let areaRows = '';
+        for (const [cls, stats] of Object.entries(a)) {
+          areaRows += `
+            <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);">
+              <span style="color:var(--text-main); font-weight:600;">${cls}</span>
+              <span style="color:var(--text-dim); font-family: 'Space Mono', monospace;">${stats.area_km2.toFixed(2)} km² (${stats.percentage.toFixed(2)}%)</span>
+            </div>
+          `;
+        }
+        
+        const f1_water = m.classification_report.Water ? m.classification_report.Water['f1-score'].toFixed(2) : '-';
+        const f1_veg = m.classification_report.Vegetation ? m.classification_report.Vegetation['f1-score'].toFixed(2) : '-';
+        const f1_urban = m.classification_report.Urban ? m.classification_report.Urban['f1-score'].toFixed(2) : '-';
+        const f1_desert = m.classification_report.Desert ? m.classification_report.Desert['f1-score'].toFixed(2) : '-';
+
+        reportHtml = `
+          <div class="shell-card" style="margin-top:20px; padding: 25px;">
+            <h4 style="margin:0 0 15px 0; font-size:1.15rem; color:var(--accent);">Classification Report</h4>
+            
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom:20px;">
+              <div class="glass-panel" style="padding:15px;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Overall Accuracy</div>
+                <div style="font-size:1.5rem; font-weight:700;">${(m.overall_accuracy * 100).toFixed(1)}%</div>
+              </div>
+              <div class="glass-panel" style="padding:15px;">
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Kappa Coefficient</div>
+                <div style="font-size:1.5rem; font-weight:700;">${m.kappa.toFixed(3)}</div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+              <div>
+                <h5 style="margin:0 0 10px 0; color:var(--text-main);">Area Statistics</h5>
+                <div style="background: rgba(10, 18, 34, 0.5); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                  ${areaRows}
+                </div>
+              </div>
+              <div>
+                <h5 style="margin:0 0 10px 0; color:var(--text-main);">F1-Scores per Class</h5>
+                <div style="background: rgba(10, 18, 34, 0.5); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Water</span><span style="font-family:'Space Mono', monospace;">${f1_water}</span></div>
+                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Vegetation</span><span style="font-family:'Space Mono', monospace;">${f1_veg}</span></div>
+                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Urban</span><span style="font-family:'Space Mono', monospace;">${f1_urban}</span></div>
+                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Desert</span><span style="font-family:'Space Mono', monospace;">${f1_desert}</span></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        `;
+      }
+
+      resultsContainer.innerHTML = `
+        <div class="result-container" id="resultScrollTarget">
+
+          <div
+            style="
+              color:#4ade80;
+              font-size:0.85rem;
+              font-weight:600;
+              text-align:center;
+              margin-top:0px;
+              margin-bottom:15px;
+            "
+          >
+            ✓ CLASSIFICATION COMPLETE
+          </div>
+
+          <div class="image-preview-container" style="margin-top:0;">
+
+            <img
+              src="${url}"
+              id="generatedImage"
+              onclick="openFS('${url}')"
+            >
+
+          </div>
+
+          <div class="action-group">
+
+            <button class="btn-secondary" onclick="openFS('${url}')">
+              🔍 Full Screen
+            </button>
+
+            <button class="btn-secondary" onclick="downloadImg('${url}', '${name}')">
+              ⬇ Download PNG
+            </button>
+
+          </div>
+          
+          ${reportHtml}
+
+        </div>
+      `;
+
+      document
+        .getElementById('resultScrollTarget')
+        .scrollIntoView({ behavior: 'smooth' });
+
+    }
+
+    /* =========================
+       FORM SUBMIT - CHUNKED UPLOAD
+    ========================== */
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '--';
+      if (bytes === 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+      const val = bytes / Math.pow(1024, idx);
+      return `${val.toFixed(val >= 100 ? 0 : 1)} ${units[idx]}`;
+    }
+
+    function setUploadingState() {
+      message.innerHTML = `
+        <div class="progress-shell">
+          <div class="progress-title">Uploading files (Chunked)...</div>
+          <div class="progress-track">
+            <div class="progress-bar" id="uploadBar"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="uploadPercent">0.0%</span>
+            <span id="uploadSize">0 B / --</span>
+          </div>
+          <button class="btn-cancel" id="cancelUploadBtn" type="button">
+            Cancel Upload
+          </button>
+        </div>
+      `;
+
+      return {
+        bar: document.getElementById('uploadBar'),
+        percent: document.getElementById('uploadPercent'),
+        meta: document.getElementById('uploadSize'),
+        cancel: document.getElementById('cancelUploadBtn')
+      };
+    }
+
+    function setProcessingState() {
+      message.innerHTML = `
+        <div
+          style="
+            text-align:center;
+            padding:40px;
+            background:rgba(255,255,255,0.02);
+            border-radius:20px;
+            margin-top:20px;
+          "
+        >
+
+          <div
+            class="spinner"
+            style="
+              border:3px solid rgba(255,255,255,0.1);
+              border-left-color:var(--primary);
+              width:24px;
+              height:24px;
+              border-radius:50%;
+              animation:spin 1s linear infinite;
+              margin:0 auto 15px;
+            "
+          ></div>
+
+          <div
+            style="
+              font-size:0.9rem;
+              color:var(--text-dim);
+            "
+          >
+            Processing Binary Data via AI pipeline...
+          </div>
+
+        </div>
+      `;
+    }
+
+    function showError(messageText) {
+      if (cancelController && cancelController.aborted) {
+         messageText = "Upload canceled by user.";
+      }
+      message.innerHTML = '';
+      const errWrap = document.createElement('div');
+      errWrap.setAttribute(
+        'style',
+        'color:#f87171;text-align:center;margin-top:20px;'
+      );
+      errWrap.textContent = messageText;
+      message.appendChild(errWrap);
+    }
+
+    function resetUploadUi(btn) {
+      cancelController = null;
+      btn.disabled = false;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+
+      const formData = new FormData(form);
+      const hdrFile = formData.get("hdr");
+      const datFile = formData.get("dat");
+
+      if (!hdrFile || !datFile) {
+        showError("Both files are required.");
+        resetUploadUi(btn);
+        return;
+      }
+
+      const totalSize = hdrFile.size + datFile.size;
+      let totalUploaded = 0;
+      
+      const progressUi = setUploadingState();
+      
+      cancelController = {
+        aborted: false,
+        xhr: null,
+        abort: function() {
+          this.aborted = true;
+          if (this.xhr) this.xhr.abort();
+        }
+      };
+
+      if (progressUi.cancel) {
+        progressUi.cancel.addEventListener('click', () => {
+          if (cancelController) {
+            cancelController.abort();
+          }
+        });
+      }
+
+      const sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+      const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+      const RETRY_LIMIT = 5;
+
+      const uploadFileInChunks = async (file, fileType) => {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        
+        for (let i = 0; i < totalChunks; i++) {
+          if (cancelController.aborted) throw new Error("Aborted");
+
+          let attempt = 0;
+          let success = false;
+          const start = i * CHUNK_SIZE;
+          const end = Math.min((i + 1) * CHUNK_SIZE, file.size);
+          const chunk = file.slice(start, end);
+
+          while (attempt < RETRY_LIMIT && !success) {
+            if (cancelController.aborted) throw new Error("Aborted");
+            try {
+              const chunkForm = new FormData();
+              chunkForm.append("sessionId", sessionId);
+              chunkForm.append("fileType", fileType);
+              chunkForm.append("chunkIndex", i);
+              chunkForm.append("chunk", chunk);
+
+              const xhr = new XMLHttpRequest();
+              cancelController.xhr = xhr;
+              
+              await new Promise((resolve, reject) => {
+                xhr.open("POST", "/upload/chunk");
+                xhr.onload = () => {
+                  if (xhr.status >= 200 && xhr.status < 300) resolve();
+                  else reject(new Error("HTTP Error " + xhr.status));
+                };
+                xhr.onerror = () => reject(new Error("Network Error"));
+                xhr.onabort = () => reject(new Error("Aborted"));
+                xhr.send(chunkForm);
+              });
+
+              success = true;
+              totalUploaded += chunk.size;
+              
+              const percent = Math.min(100, (totalUploaded / totalSize) * 100);
+              if (progressUi.bar) progressUi.bar.style.width = `${percent}%`;
+              if (progressUi.percent) progressUi.percent.textContent = `${percent.toFixed(1)}%`;
+              if (progressUi.meta) {
+                progressUi.meta.textContent = `${formatBytes(totalUploaded)} / ${formatBytes(totalSize)}`;
+              }
+            } catch (err) {
+              attempt++;
+              if (attempt >= RETRY_LIMIT || cancelController.aborted) throw err;
+              await new Promise(r => setTimeout(r, 2000)); // wait before retry
+            }
+          }
+        }
+        return totalChunks;
+      };
+
+      try {
+        // Upload Header file
+        const hdrChunksCount = await uploadFileInChunks(hdrFile, "hdr");
+        // Upload Data file
+        const datChunksCount = await uploadFileInChunks(datFile, "dat");
+
+        // Send completion assembly request
+        setProcessingState();
+        
+        const completionRes = await fetch("/upload/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: sessionId,
+            originalNames: {
+              hdr: hdrFile.name,
+              dat: datFile.name
+            },
+            files: [
+              { type: "hdr", chunks: hdrChunksCount },
+              { type: "dat", chunks: datChunksCount }
+            ]
+          })
+        });
+
+        const data = await completionRes.json();
+        
+        if (!completionRes.ok || !data.success) {
+           throw new Error(data.error || "Server processing failed.");
+        }
+
+        // Processing finished, display image
+        message.innerHTML = '';
+        const url = data.imageUrl + "?t=" + Date.now();
+        const time = new Date().toLocaleString();
+        const name = data.imageUrl.split('/').pop();
+
+        const newItem = { url, time, name, report: data.report };
+        displayResult(url, time, name, data.report);
+        renderHistoryCard(newItem);
+
+        const saved = JSON.parse(localStorage.getItem('envi_history') || '[]');
+        saved.push(newItem);
+        localStorage.setItem('envi_history', JSON.stringify(saved));
+        
+      } catch (error) {
+        console.error("Upload process error", error);
+        showError(error.message);
+      } finally {
+        resetUploadUi(btn);
+      }
+    });
+
+    /* =========================
+       FULLSCREEN
+    ========================== */
+
+    function openFS(url) {
+      document.getElementById('fs-img').src = url;
+      document.getElementById('fs-modal').style.display = 'block';
+    }
+
+    /* =========================
+       DOWNLOAD
+    ========================== */
+
+    function downloadImg(url, name) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "Processed_ENVI.png" || 'output.png';
+      a.click();
+    }
+
+    function openDocs() {
+      docModal.style.display = 'block';
+    }
+
+    function closeDocs() {
+      docModal.style.display = 'none';
+    }
+
+  </script>
+
+</body>
+</html>
