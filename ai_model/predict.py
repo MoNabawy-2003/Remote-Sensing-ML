@@ -12,12 +12,14 @@ from sklearn.metrics import accuracy_score, classification_report, cohen_kappa_s
 # ==========================================
 # 1. إعداد المسارات (Paths) & Input
 # ==========================================
-if len(sys.argv) != 3:
-    print("Usage: python predict.py <hdr_file> <dat_file>")
+# السماح بـ 3 أو 4 Arguments (ملف الـ CSV اختياري)
+if len(sys.argv) not in [3, 4]:
+    print("Usage: python predict.py <hdr_file> <dat_file> [optional_csv_file]")
     sys.exit(1)
 
 hdr_path = sys.argv[1]
 dat_path = sys.argv[2]
+roi_path = sys.argv[3] if len(sys.argv) == 4 else None
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,7 +43,7 @@ except Exception as e:
 # ==========================================
 # 3. تحميل مصفوفة صورة الإسماعيلية
 # ==========================================
-print("Reading Ismailia image data...")
+print("Reading image data...")
 img = envi.open(hdr_path, dat_path)
 rows, cols, bands = img.nrows, img.ncols, img.nbands
 data_3d = np.array(img.load(), dtype=np.float32)
@@ -73,63 +75,68 @@ classified_map = predictions.reshape((rows, cols)).astype(np.uint8)
 print("Prediction complete.\n")
 
 # ==========================================
-# 4.1 حساب دقة الفالديشن باستخدام ROIs
+# 4.1 حساب دقة الفالديشن (Conditional)
 # ==========================================
-print("--- VALIDATION ACCURACY (ROIs) ---")
-roi_path = os.path.join(current_dir, 'Labeled_ROIs.csv')
-class_name_to_id = {'water': 1, 'vegetation': 2, 'urban': 3, 'desert': 4}
+metrics_data = None
 
-def parse_roi_file(path):
-    roi_order, roi_counts, data_points = [], [], []
-    with open(path, 'r', encoding='utf-8') as f:
-        for line in f:
-            stripped = line.strip()
-            if not stripped: continue
-            if stripped.startswith(';'):
-                if 'ROI name:' in stripped:
-                    roi_order.append(stripped.split(':', 1)[1].strip())
-                elif 'ROI npts:' in stripped:
-                    roi_counts.append(int(stripped.split(':', 1)[1].strip()))
-                continue
-            parts = [p.strip() for p in stripped.split(',')]
-            if len(parts) >= 2:
-                try:
-                    data_points.append((int(parts[0]), int(parts[1])))
-                except ValueError: continue
-    return roi_order, roi_counts, data_points
+if roi_path and os.path.exists(roi_path):
+    print("--- VALIDATION ACCURACY (ROIs) ---")
+    class_name_to_id = {'water': 1, 'vegetation': 2, 'urban': 3, 'desert': 4}
 
-roi_order, roi_counts, roi_points = parse_roi_file(roi_path)
+    def parse_roi_file(path):
+        roi_order, roi_counts, data_points = [], [], []
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped: continue
+                if stripped.startswith(';'):
+                    if 'ROI name:' in stripped:
+                        roi_order.append(stripped.split(':', 1)[1].strip())
+                    elif 'ROI npts:' in stripped:
+                        roi_counts.append(int(stripped.split(':', 1)[1].strip()))
+                    continue
+                parts = [p.strip() for p in stripped.split(',')]
+                if len(parts) >= 2:
+                    try:
+                        data_points.append((int(parts[0]), int(parts[1])))
+                    except ValueError: continue
+        return roi_order, roi_counts, data_points
 
-y_true, y_pred = [], []
-current_idx = 0
-for roi_name, count in zip(roi_order, roi_counts):
-    class_id = class_name_to_id.get(roi_name.strip().lower())
-    for _ in range(count):
-        if current_idx < len(roi_points):
-            x, y = roi_points[current_idx]
-            col, row = x - 1, y - 1
-            if 0 <= row < rows and 0 <= col < cols:
-                pred = classified_map[row, col]
-                if pred != 0:
-                    y_true.append(class_id)
-                    y_pred.append(int(pred))
-            current_idx += 1
+    roi_order, roi_counts, roi_points = parse_roi_file(roi_path)
 
-overall_acc = 0.0
-kappa_val = 0.0
-clf_report_dict = {}
+    y_true, y_pred = [], []
+    current_idx = 0
+    for roi_name, count in zip(roi_order, roi_counts):
+        class_id = class_name_to_id.get(roi_name.strip().lower())
+        for _ in range(count):
+            if current_idx < len(roi_points):
+                x, y = roi_points[current_idx]
+                col, row = x - 1, y - 1
+                if 0 <= row < rows and 0 <= col < cols:
+                    pred = classified_map[row, col]
+                    if pred != 0:
+                        y_true.append(class_id)
+                        y_pred.append(int(pred))
+                current_idx += 1
 
-if len(y_true) == 0:
-    print("No valid ROI points found after masking.")
+    if len(y_true) == 0:
+        print("No valid ROI points found after masking.")
+    else:
+        overall_acc = accuracy_score(y_true, y_pred)
+        kappa_val = cohen_kappa_score(y_true, y_pred)
+        clf_report_dict = classification_report(y_true, y_pred, labels=[1, 2, 3, 4],
+                                                target_names=["Water", "Vegetation", "Urban", "Desert"],
+                                                zero_division=0, output_dict=True)
+        metrics_data = {
+            "overall_accuracy": float(overall_acc),
+            "kappa": float(kappa_val),
+            "classification_report": clf_report_dict
+        }
+        print(f"Overall Accuracy: {overall_acc:.4f}")
+        print(f"Kappa: {kappa_val:.4f}")
+        print("Classification Report Calculated.")
 else:
-    overall_acc = accuracy_score(y_true, y_pred)
-    kappa_val = cohen_kappa_score(y_true, y_pred)
-    clf_report_dict = classification_report(y_true, y_pred, labels=[1, 2, 3, 4],
-                                            target_names=["Water", "Vegetation", "Urban", "Desert"],
-                                            zero_division=0, output_dict=True)
-    print(f"Overall Accuracy: {overall_acc:.4f}")
-    print(f"Kappa: {kappa_val:.4f}")
-    print("Classification Report Calculated.")
+    print("--- NO ROI FILE PROVIDED: Skipping Validation Accuracy Metrics ---")
 
 # ==========================================
 # 5. رسم الخريطة وحساب المساحات
@@ -141,9 +148,6 @@ cmap = ListedColormap(colors)
 
 plt.figure(figsize=(12, 10))
 plt.imshow(classified_map, cmap=cmap, vmin=0, vmax=4)
-
-# Title removed to keep the upper part of the image clean
-# plt.title('Ismailia Validation Map (Using Nile Delta Model)', fontsize=14)
 
 legend_patches = [
     mpatches.Patch(color='blue', label='Water'),
@@ -167,7 +171,7 @@ class_names = {1: 'Water', 2: 'Vegetation', 3: 'Urban', 4: 'Desert'}
 
 area_stats = {}
 
-print("\n--- STATISTICS FOR ISMAILIA REGION ---")
+print("\n--- STATISTICS ---")
 if valid_pixels == 0:
     print("No valid pixels found.")
 else:
@@ -182,11 +186,7 @@ print(f"\nProcess Complete! Image saved as '{base_name}.png' in the output folde
 
 # Build JSON report
 final_report = {
-    "metrics": {
-        "overall_accuracy": float(overall_acc),
-        "kappa": float(kappa_val),
-        "classification_report": clf_report_dict
-    },
+    "metrics": metrics_data,
     "area_stats": area_stats
 }
 

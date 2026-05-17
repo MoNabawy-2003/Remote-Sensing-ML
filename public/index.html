@@ -1056,10 +1056,6 @@
 
 <body>
 
-  <!-- =========================
-       SIDEBAR
-  ========================== -->
-
   <div id="sidebar">
 
     <div class="sidebar-header">
@@ -1085,17 +1081,9 @@
 
   </div>
 
-  <!-- =========================
-       TOGGLE BUTTON
-  ========================== -->
-
   <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
     ☰ History
   </button>
-
-  <!-- =========================
-       MAIN WRAPPER
-  ========================== -->
 
   <div class="main-wrapper">
 
@@ -1164,6 +1152,15 @@
                 </div>
                 <span class="dropzone-meta">Required</span>
                 <input type="file" name="dat" required>
+              </div>
+
+              <div class="dropzone" data-dropzone>
+                <div class="dropzone-text">
+                  <span class="dropzone-title">Ground Truth File (.csv)</span>
+                  <span class="dropzone-hint">Optional: For Validation & Accuracy Metrics</span>
+                </div>
+                <span class="dropzone-meta" style="color:var(--text-dim);">Optional</span>
+                <input type="file" name="csv" accept=".csv">
               </div>
 
               <button type="submit" class="btn-submit" id="submitBtn">
@@ -1288,10 +1285,6 @@
 
   </div>
 
-  <!-- =========================
-       FULLSCREEN MODAL
-  ========================== -->
-
   <div id="fs-modal" onclick="this.style.display='none'">
     <img id="fs-img" src="">
   </div>
@@ -1414,10 +1407,6 @@
       </div>
     </div>
   </div>
-
-  <!-- =========================
-       SCRIPT
-  ========================== -->
 
   <script>
 
@@ -1560,9 +1549,11 @@
     function displayResult(url, time, name, report) {
       
       let reportHtml = '';
-      if (report && report.metrics && report.area_stats) {
-        const m = report.metrics;
+      
+      // We check if report.area_stats is available at a minimum
+      if (report && report.area_stats) {
         const a = report.area_stats;
+        const m = report.metrics; // Could be null if no CSV was uploaded
         
         let areaRows = '';
         for (const [cls, stats] of Object.entries(a)) {
@@ -1573,16 +1564,18 @@
             </div>
           `;
         }
-        
-        const f1_water = m.classification_report.Water ? m.classification_report.Water['f1-score'].toFixed(2) : '-';
-        const f1_veg = m.classification_report.Vegetation ? m.classification_report.Vegetation['f1-score'].toFixed(2) : '-';
-        const f1_urban = m.classification_report.Urban ? m.classification_report.Urban['f1-score'].toFixed(2) : '-';
-        const f1_desert = m.classification_report.Desert ? m.classification_report.Desert['f1-score'].toFixed(2) : '-';
 
-        reportHtml = `
-          <div class="shell-card" style="margin-top:20px; padding: 25px;">
-            <h4 style="margin:0 0 15px 0; font-size:1.15rem; color:var(--accent);">Classification Report</h4>
-            
+        let metricsHtml = '';
+        let f1Html = '';
+
+        // Only build and show Accuracy & F1-Scores if metrics exist (CSV was provided)
+        if (m) {
+          const f1_water = m.classification_report.Water ? m.classification_report.Water['f1-score'].toFixed(2) : '-';
+          const f1_veg = m.classification_report.Vegetation ? m.classification_report.Vegetation['f1-score'].toFixed(2) : '-';
+          const f1_urban = m.classification_report.Urban ? m.classification_report.Urban['f1-score'].toFixed(2) : '-';
+          const f1_desert = m.classification_report.Desert ? m.classification_report.Desert['f1-score'].toFixed(2) : '-';
+
+          metricsHtml = `
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom:20px;">
               <div class="glass-panel" style="padding:15px;">
                 <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Overall Accuracy</div>
@@ -1593,6 +1586,26 @@
                 <div style="font-size:1.5rem; font-weight:700;">${m.kappa.toFixed(3)}</div>
               </div>
             </div>
+          `;
+
+          f1Html = `
+            <div>
+              <h5 style="margin:0 0 10px 0; color:var(--text-main);">F1-Scores per Class</h5>
+              <div style="background: rgba(10, 18, 34, 0.5); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Water</span><span style="font-family:'Space Mono', monospace;">${f1_water}</span></div>
+                <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Vegetation</span><span style="font-family:'Space Mono', monospace;">${f1_veg}</span></div>
+                <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Urban</span><span style="font-family:'Space Mono', monospace;">${f1_urban}</span></div>
+                <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Desert</span><span style="font-family:'Space Mono', monospace;">${f1_desert}</span></div>
+              </div>
+            </div>
+          `;
+        }
+
+        reportHtml = `
+          <div class="shell-card" style="margin-top:20px; padding: 25px;">
+            <h4 style="margin:0 0 15px 0; font-size:1.15rem; color:var(--accent);">Classification Report</h4>
+            
+            ${metricsHtml}
 
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
               <div>
@@ -1601,15 +1614,7 @@
                   ${areaRows}
                 </div>
               </div>
-              <div>
-                <h5 style="margin:0 0 10px 0; color:var(--text-main);">F1-Scores per Class</h5>
-                <div style="background: rgba(10, 18, 34, 0.5); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
-                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Water</span><span style="font-family:'Space Mono', monospace;">${f1_water}</span></div>
-                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Vegetation</span><span style="font-family:'Space Mono', monospace;">${f1_veg}</span></div>
-                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Urban</span><span style="font-family:'Space Mono', monospace;">${f1_urban}</span></div>
-                  <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom:1px solid var(--border);"><span>Desert</span><span style="font-family:'Space Mono', monospace;">${f1_desert}</span></div>
-                </div>
-              </div>
+              ${f1Html}
             </div>
 
           </div>
@@ -1769,14 +1774,15 @@
       const formData = new FormData(form);
       const hdrFile = formData.get("hdr");
       const datFile = formData.get("dat");
+      const csvFile = formData.get("csv"); // <-- ADDED
 
-      if (!hdrFile || !datFile) {
-        showError("Both files are required.");
+      if (!hdrFile || !datFile || hdrFile.size === 0 || datFile.size === 0) {
+        showError("Both HDR and DAT files are required.");
         resetUploadUi(btn);
         return;
       }
 
-      const totalSize = hdrFile.size + datFile.size;
+      const totalSize = hdrFile.size + datFile.size + (csvFile && csvFile.size ? csvFile.size : 0);
       let totalUploaded = 0;
       
       const progressUi = setUploadingState();
@@ -1862,6 +1868,20 @@
         // Upload Data file
         const datChunksCount = await uploadFileInChunks(datFile, "dat");
 
+        // Upload CSV file (IF EXISTS)
+        let csvChunksCount = 0;
+        let filesPayload = [
+          { type: "hdr", chunks: hdrChunksCount },
+          { type: "dat", chunks: datChunksCount }
+        ];
+        let originalNamesPayload = { hdr: hdrFile.name, dat: datFile.name };
+
+        if (csvFile && csvFile.size > 0) {
+           csvChunksCount = await uploadFileInChunks(csvFile, "csv");
+           filesPayload.push({ type: "csv", chunks: csvChunksCount });
+           originalNamesPayload.csv = csvFile.name;
+        }
+
         // Send completion assembly request
         setProcessingState();
         
@@ -1870,14 +1890,8 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sessionId: sessionId,
-            originalNames: {
-              hdr: hdrFile.name,
-              dat: datFile.name
-            },
-            files: [
-              { type: "hdr", chunks: hdrChunksCount },
-              { type: "dat", chunks: datChunksCount }
-            ]
+            originalNames: originalNamesPayload,
+            files: filesPayload
           })
         });
 

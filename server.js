@@ -79,12 +79,14 @@ app.post("/upload/complete", async (req, res) => {
 
     let hdrPath = "";
     let datPath = "";
+    let csvPath = ""; // تم إضافة مسار ملف الـ CSV
 
-    // Assemble both files
+    // Assemble all files (hdr, dat, and optionally csv)
     for (const file of files) {
        const pathStr = await assembleFile(sessionId, file.type, originalNames[file.type], file.chunks);
        if (file.type === "hdr") hdrPath = `./${pathStr}`;
        if (file.type === "dat") datPath = `./${pathStr}`;
+       if (file.type === "csv") csvPath = `./${pathStr}`; // تجميع الـ CSV لو موجود
     }
 
     console.log("Files assembled. Running Python pipeline...");
@@ -92,7 +94,11 @@ app.post("/upload/complete", async (req, res) => {
     // Just a trick to get the dat file's base name to match output behavior in python script
     const outputDatName = path.basename(datPath); 
 
-    const cmd = `python ./ai_model/predict.py ${hdrPath} ${datPath}`;
+    // بناء أمر التشغيل بناءً على وجود ملف الـ CSV أو عدمه (مع إضافة علامات تنصيص للمسارات)
+    const cmd = csvPath 
+        ? `python ./ai_model/predict.py "${hdrPath}" "${datPath}" "${csvPath}"` 
+        : `python ./ai_model/predict.py "${hdrPath}" "${datPath}"`;
+        
     console.log("Executing:", cmd);
 
     exec(cmd, (err, stdout, stderr) => {
